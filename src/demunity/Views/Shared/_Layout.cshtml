@@ -1,0 +1,128 @@
+﻿@using System.Text
+@using System.Security.Cryptography
+@using System.Web
+@using demunity.lib
+@using demunity.lib.Extensions
+
+@inject IEnvironment environment 
+
+@{
+    var identity = this.User.Identities.FirstOrDefault();
+    string siteTitle = environment.GetVariable(Constants.EnvironmentVariables.SiteTitle);
+    string googleTagManagerId = environment.GetVariable(Constants.EnvironmentVariables.GoogleTagManagerId);
+    string staticAssetHost = environment.GetVariable(Constants.EnvironmentVariables.StaticAssetHost).EnsureEndsWith("/");
+    bool userIsAuthenticated = identity?.IsAuthenticated ?? false;
+    string defaultAvatarUrl = $"{staticAssetHost}img/default-user-avatar.jpg";
+    string userAvatarUrl;
+    if (userIsAuthenticated)
+    {
+        var email = identity.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+        var hash = string.Join("",MD5.Create().ComputeHash(Encoding.Default.GetBytes(email)).Select(b => b.ToString("x2")));
+        userAvatarUrl = $"https://www.gravatar.com/avatar.php?gravatar_id={hash}&default={HttpUtility.UrlEncode(defaultAvatarUrl)}";
+    }
+    else
+    {
+        userAvatarUrl = defaultAvatarUrl;
+    }
+
+    string deploymentInfoString = (DateTime.UtcNow - demunity.lib.Constants.BuildTime).GetPastTimeString();
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Deployed @deploymentInfoString -->
+    @if(!string.IsNullOrEmpty(googleTagManagerId))
+    {
+    <script async src="https://www.googletagmanager.com/gtag/js?id=@(googleTagManagerId)"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '@(googleTagManagerId)');
+    </script>
+    }
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - @(siteTitle)</title>
+
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+   
+    <link 
+        rel="stylesheet" 
+        href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" 
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" 
+        crossorigin="anonymous" />
+
+    <link rel="stylesheet" href="~/css/site.min.css" asp-append-version="true" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="@(staticAssetHost)apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="@(staticAssetHost)favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="@(staticAssetHost)favicon-16x16.png">
+    <link rel="manifest" href="@(staticAssetHost)site.webmanifest">
+    <link rel="mask-icon" href="@(staticAssetHost)safari-pinned-tab.svg" color="#5bbad5">
+    <link rel="shortcut icon" href="@(staticAssetHost)favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="@(staticAssetHost)browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
+</head>
+<body>
+    <nav class="navbar navbar-expand-md fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target=".navbar-collapse">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a asp-area="" asp-controller="Home" asp-action="Index" class="navbar-brand">@(siteTitle)</a>
+            </div>
+            <div class="navbar-collapse collapse">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Photos" asp-action="Latest">Latest</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Photos" asp-action="New">Add new</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="About">About</a></li>
+                </ul>
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item"><a class="nav-link d-flex align-items-center" asp-area="" asp-controller="Users" asp-action="Me"><img class="rounded-circle user-avatar-img" src="@userAvatarUrl" /> Me</a></li>
+                    
+                    @if (userIsAuthenticated)
+                    {
+                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Signout"><i class="fas fa-sign-out-alt"></i> Sign out</a></li>
+                    }
+                    else
+                    {
+                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Signin"><i class="fas fa-sign-in-alt"></i> Sign in</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <partial name="_CookieConsentPartial" />
+
+    <div class="container body-content">
+        @RenderBody()
+        <div id="addPhotoButton"><a href="/photos/new"><i class="far fa-plus-square"></i></a></div>
+        <hr />
+    </div>
+
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script src="~/js/site.min.js" asp-append-version="true"></script>
+
+    @RenderSection("Scripts", required: false)
+
+    <script>
+        window.addEventListener('load', ()=>{
+            let lazyImgLoader = new LazyImageLoader();
+        });
+    </script>
+    
+
+    
+</body>
+</html>

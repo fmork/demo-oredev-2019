@@ -1,0 +1,71 @@
+@using demunity.lib
+
+@{
+    string staticAssetHost = (new SystemEnvironment()).GetVariable(Constants.EnvironmentVariables.StaticAssetHost);
+    ViewData["Title"] = "Add a new photo";
+    
+}
+
+<form>
+<div class="row" id="selectImageContainer">
+    <div class="col-md-12">
+        <h3>1: Choose a photo</h3>
+    </div>
+    <div class="col-md" id="uploadFormContainer">
+        <div>
+            <label for="fileInput">Add a photo:</label>
+            <input id="fileInput" type="file"/>
+        </div>
+    </div>
+</div>
+
+<div class="row" id="editImageContainer" hidden>
+    <div class="col-md-12">
+        <h3>2: Say something about it</h3>
+    </div>
+    <div class="col-md display-img-container">
+        <img id="imagePreview"  class="display-img">
+    </div>
+    <div class="col-md">
+        <textarea placeholder='What does your #photo show?' id='photoText'></textarea>
+        <div>
+            <!-- <label for="fileUploadSubmit">...then click here to publish:</label> -->
+            <input id="filUploadSubmit" type="submit" value="Publish"/>
+        </div>
+
+    </div>
+</div>
+</form>
+
+<div class="row" id="imageUploadingContainer" hidden>
+    <div class="col-md-12">
+        <h3>3: Wait for it...</h3>
+    </div>
+
+    <div class="col-md-12">
+       <i class="fa fa-spinner fa-spin"></i> <span id="uploadFeedback"></span>
+    </div>
+</div>
+
+<div class="row" id="processingFailedContainer" hidden>
+    <div class="col-md-12">
+        <h3>Oh no!</h3>
+    </div>
+    <div class="col-md-12">
+       <p>Something went wrong! Perhaps the photo was of an unsupported format. Perhaps it was not a photo?</p>
+       <p>If you tried to upload a video: sorry, that's not supported.</p>
+       <p><a asp-area="" asp-controller="Photos" asp-action="New">Click here to continue</a></p>
+    </div>
+    <div class="col-md-12 text-center">
+        <i class="fas fa-heart-broken"></i>
+    </div>
+</div>
+
+
+<script>
+    window.addEventListener('load', () => {
+        let uploader = new Uploader(
+            '@staticAssetHost',
+            document.querySelector('#uploadedPhotosContainer'));
+    });
+</script>

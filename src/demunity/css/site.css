@@ -1,0 +1,104 @@
+a {
+    color: var(--main-accent);
+}
+
+.btn-primary {
+    background-color: var(--main-accent);
+}
+
+.btn-primary:disabled {
+    background-color: var(--main-accent);
+}
+
+.btn-primary:hover {
+    background-color: var(--main-accent-brighter);
+}
+
+.navbar a {
+    color: white;
+}
+
+.navbar {
+    background-color: var(--main-accent);
+}
+
+.navbar-toggler {
+    color: white;
+    border-color: var(--white-transparent);
+}
+
+.navbar-toggler-icon {
+    color: white;
+    border-color: var(--white-transparent);
+}
+
+.navbar-brand,
+.nav-link {
+    font-size: 1.2rem;
+}
+
+body {
+    font-family: 'Alegreya sans', sans-serif;
+    padding-top: 70px;
+    padding-bottom: 20px;
+    font-size: 1.4rem;
+}
+
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+#addPhotoButton {
+    position: fixed;
+    bottom: 3rem;
+    left: 50%;
+    margin-left: -2rem;
+    border: 1px solid var(--almost-black);
+    border-radius: 100%;
+    background-color: var(--main-accent-transparent);
+    padding: .5rem;
+    font-size: 2.5rem;
+    width: 4rem;
+    height: 4rem;
+    text-align: center;
+    padding: 0.3rem;
+}
+
+#addPhotoButton a {
+    color: white;
+}
+
+.user-avatar-img {
+    height: 1.3rem;
+    width: 1.3rem;
+    margin-right: 0.3rem;
+}
+
+.smaller {
+    font-size: 1rem;
+}
+
+.toned-down {
+    color: var(--mid-gray);
+}
+
+.hidden {
+    display: none;
+}
+
+.float-right {
+    float: right;
+}
+
+.icon-link {
+    font-size: 1.5rem;
+}
+
+.disabled {
+    opacity: 0.5;
+}
+
+.modal-dialog {
+    max-width: 100%;
+}

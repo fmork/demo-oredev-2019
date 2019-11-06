@@ -1,0 +1,40 @@
+@model demunity.Models.PublicUserWithPhotos
+@{
+
+    ViewData["Title"] = "Me! Me! Me!";
+}
+<div class="row">
+    <div class="col-sm-12">
+        <h3>@Model.User.Name</h3>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-6">
+        <div class="toned-down">@Model.User.Email</div>        
+    </div>
+    <div class="col-sm-6">
+        <div id="onlineProfilesContainer">
+            <div class="col-md toned-down">(loading online profiles...)</div>
+        </div>
+        <div id="addNewProfileContainer">
+            <select id="onlineProfileType" class="custom-select smaller">
+                <option value="">Select one</option>
+                <option value="Twitter">Twitter</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Web">Web</option>
+            </select>
+            <input id="profileName" placeholder="@@name" class="smaller">
+            <a id="addOnlineProfileLink" class="disabled"><i class="fas fa-save"></i></a>
+        </div>
+        
+    </div>
+</div>
+<div class="row">
+<partial name="GalleryThumbsPartial" model="Model.Photos" />
+</div>
+<script>
+    window.addEventListener('load', () => {
+        const likeManager = new LikeManager();
+        const userProfile = new UserProfileEdit('@Model.User.UserId', null);
+    });
+</script>

@@ -1,0 +1,14 @@
+@using System.Collections.Generic
+@using demunity.Models
+@model IEnumerable<PublicPhotoModel>
+@{
+    ViewData["Title"] = "Latest Photos";
+}
+
+<partial name="GalleryThumbsPartial" model="Model" />
+
+<script>
+    window.addEventListener('load', () => {
+        const likeManager = new LikeManager();
+    });
+</script>

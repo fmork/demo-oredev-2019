@@ -1,0 +1,56 @@
+@using System.Collections.Generic
+@using demunity.Models
+
+@model IEnumerable<PublicPhotoModel>
+
+@{
+    var identity = this.User.Identities.FirstOrDefault();
+    bool userIsAuthenticated = identity?.IsAuthenticated ?? false;
+
+    // load a few photos directly, and lazy load the rest
+    const int lazyLoadThreshold = 5;
+    var sizes = "(min-width: 1200px) 530px, (min-width: 992px) 440px, (min-width: 768px) 320px, (min-width: 576px) 230px, 90w";
+    Func<PublicPhotoModel, string> srcSetFunc = photo =>  string.Join(",", photo.Uris.OrderBy(uri => uri.Width).Select(uri => $"{uri.JpgUri} {uri.Width}w"));
+    var currentIndex = 0;
+}
+
+<div class="col-sm-12 galleryThumbContainer">
+    @foreach (var photo in Model)
+    {
+        var srcsetValue = srcSetFunc(photo); // string.Join(",", photo.Uris.OrderBy(uri => uri.Width).Select(uri => $"{uri.JpgUri} {uri.Width}w"));
+        var srcValue = photo.Uris.OrderByDescending(uri => uri.Width).First().JpgUri;
+        var orientationClass = $"{(photo.IsPortraitOrientation ? "portrait" : "landscape")}-orientation";
+        var likeIconState = photo.LikedByCurrentUser ? "fas" : "far";
+        <div class="thumb-frame">
+            <div class="galleryThumb">
+                <a href="/photos/@photo.Id">
+        
+        @if (currentIndex <= lazyLoadThreshold)
+        {
+                    <img sizes="@sizes" srcset="@srcsetValue" src="@srcValue" class="@orientationClass" />   
+        }
+        else
+        {
+                    <img data-sizes="@sizes" data-srcset="@srcsetValue" data-src="@srcValue" class="lazy-img @orientationClass" />
+        }
+                </a>
+            </div>
+            <div class="thumb-data smaller">
+                @if(userIsAuthenticated)
+                {
+                    <a class="likeIcon" data-photoid="@(photo.Id)" data-likestate="@(photo.LikedByCurrentUser.ToString().ToLower())"><i class="@(likeIconState) fa-star"></i></a> <span class="data-nbr">@(photo.LikeCount)</span> <i class="far fa-comment-alt"></i> <span class="data-nbr">@(photo.CommentCount)</span>
+                }
+                else
+                {
+                    <i class="@(likeIconState) fa-star"></i> <span class="data-nbr">@(photo.LikeCount)</span> <i class="far fa-comment-alt"></i> <span class="data-nbr">@(photo.CommentCount)</span>
+                }
+            </div>
+            <div class="thumb-details smaller">
+                <strong>@(photo.UserName)</strong> @Html.Raw(photo.HtmlText)
+            </div>
+        </div>
+
+        currentIndex++;
+    }
+</div>
+

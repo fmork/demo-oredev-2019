@@ -1,0 +1,106 @@
+@using demunity.Models
+@using demunity.lib.Data.Models
+@using demunity.lib.Extensions
+@using Newtonsoft.Json
+@model PublicPhotoModel
+
+
+<!-- Score: @Model.Score -->
+
+@{
+    ViewData["Title"] = "Photo Detail";
+
+    var srcsetValue = string.Join(",", Model.Uris.OrderBy(uri => uri.Width).Select(uri => $"{uri.JpgUri} {uri.Width}w"));
+    var srcValue = Model.Uris.OrderByDescending(uri => uri.Width).First().JpgUri;
+    var orientationClass = $"{(Model.IsPortraitOrientation ? "portrait" : "landscape")}-orientation";
+    var likeIconState = Model.LikedByCurrentUser ? "fas" : "far";
+    var photoTextClass = string.IsNullOrEmpty(Model.HtmlText) ? "hidden" : "";
+    var photoTextEmptyClass = "toned-down" + (string.IsNullOrEmpty(Model.HtmlText) ? "" : " hidden");
+
+    <div class="row">
+        <div class="col-md display-img-container">
+            <img id="photoOnDisplay" srcset="@srcsetValue" src="@srcValue" class="display-img @orientationClass" data-toggle="modal" data-target="#photoPopupModal">
+        </div>
+
+        <div id="textDisplayContainer" class="col-md">
+            
+            @if(User.Identity.IsAuthenticated)
+            {
+                <a class="likeIcon" data-photoid="@(Model.Id)" data-likestate="@(Model.LikedByCurrentUser.ToString().ToLower())"><i class="@(likeIconState) fa-star"></i></a> <span class="data-nbr">@(Model.LikeCount)</span>
+            }
+            else
+            {
+                <i class="@(likeIconState) fa-star"></i> <span class="data-nbr">@(Model.LikeCount)</span>
+            }
+            <div id="photoOwner"><a href="/users/@Model.UserId">@(Model.UserName)</a> <span class="smaller toned-down">(@((DateTimeOffset.UtcNow - Model.CreatedTime).GetPastTimeString()))</span></div>
+            <div id="photoTextDisplay">
+                @if (Model.PhotoIsOwnedByCurrentUser)
+                {
+                    <a id="showTextEditorLink" class="icon-link" href="javascript:void(0)"><i class="fas fa-pencil-alt"></i></a>
+                }
+
+               
+                <div id="photoText" class="@photoTextClass">
+                    @Html.Raw(Model.HtmlText)
+                </div>
+                <div id="photoText-empty" class="@photoTextEmptyClass">
+                    @if(Model.PhotoIsOwnedByCurrentUser)
+                    {
+                    <p>(Photo has no text. Click the pen to edit <i class="fas fa-long-arrow-alt-right"></i>)</p>
+                    }
+                    else
+                    {
+                    <p>(Photo has no text.)</p>
+                    }
+                     
+                </div>
+            </div>
+
+            <div id="commentsDisplayContainer">
+                @if(User.Identity.IsAuthenticated && Model.State == PhotoState.PhotoAvailable.ToString())
+                {
+                <div id="addCommentContainer">
+                    <textarea placeholder='Say something about this photo' id='photoComment'></textarea>
+                    <div id="addCommentControls">
+                        <a id="addCommentLink" class="icon-link disabled" title="Click to save your comment"><i class="far fa-comment-alt"></i></a>
+                    </div>
+                </div>
+                }
+                <div id="commentsContainer">
+                    <div class="toned-down">(loading comments...)</div>
+                </div>
+            </div>
+        
+        </div>
+        <div id="textEditContainer" class="col-md hidden">
+            <a id="cancelEditLink" href="javascript:void(0)" class="float-right icon-link" title="Undo edits"><i class="far fa-window-close"></i></a>
+            <div id="photoTextEdit">
+                <textarea id='photoTextEditor' placeholder='What does your #photo show?'>@(Model.Text)</textarea>
+                <div id="saveCommand">
+                    <a id="photoTextSaveLink" class="icon-link" href="javascript:void(0)" title="Save changes"><i class="fas fa-save"></i></a>
+                </div>
+            </div>
+            <div id="textEditControls">
+                <a id="photoDeleteLink" href="javascript:void(0)" class="smaller" title="Delete this photo (with all likes and comments)">Click here do delete this photo (and its comments)</a>
+            </div>
+        </div>    
+    </div>
+}
+
+<div id="photoPopupModal" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content text-center">
+        <div class="modal-body">
+            <img srcset="@srcsetValue" src="@srcValue" class="display-img @orientationClass" data-toggle="modal" data-target="#photoPopupModal">
+        </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    window.addEventListener('load', () => {
+        let photoDetails = new PhotoDetails(
+            @Html.Raw(JsonConvert.SerializeObject(Model)));
+        let likeManager = new LikeManager();
+    });
+</script>

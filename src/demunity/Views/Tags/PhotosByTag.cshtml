@@ -1,0 +1,15 @@
+﻿@using System.Collections.Generic
+@using demunity.Models
+@model IEnumerable<PublicPhotoModel>
+@{
+    ViewData["Title"] = "Photos by tag";
+}
+
+ <partial name="GalleryThumbsPartial" model="Model" />
+
+
+<script>
+    window.addEventListener('load', () => {
+        const likeManager = new LikeManager();
+    });
+</script>

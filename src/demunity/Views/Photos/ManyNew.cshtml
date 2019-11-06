@@ -1,0 +1,59 @@
+
+
+@using demunity.lib
+
+@{
+    string staticAssetHost = (new SystemEnvironment()).GetVariable(Constants.EnvironmentVariables.StaticAssetHost);
+    ViewData["Title"] = "Add a new photo";
+    
+}
+
+<form>
+<div class="row" id="selectImageContainer">
+    <div class="col-md-12">
+        <h3>1: Choose a photo</h3>
+    </div>
+    <div class="col-md" id="uploadFormContainer">
+        <div>
+            <label for="fileInput">Add a photo:</label>
+            <input id="fileInput" type="file" multiple/>
+        </div>
+    </div>
+</div>
+
+<div class="row" id="editImageContainer">
+    <div class="col-md-12">
+        <h3>2: Say something about it</h3>
+    </div>
+    <div class="col-md display-img-container">
+        <img id="imagePreview"  class="display-img">
+    </div>
+    <div class="col-md">
+        <textarea placeholder='What does your photo show?' id='photoText'></textarea>
+        <div>
+            <!-- <label for="fileUploadSubmit">...then click here to publish:</label> -->
+            <input id="filUploadSubmit" type="submit" value="Publish"/>
+        </div>
+
+    </div>
+</div>
+</form>
+
+<div class="row" id="imageUploadingContainer">
+    <div class="col-md-12">
+        <h3>3: Wait for it...</h3>
+    </div>
+
+    
+   
+</div>
+
+
+<script>
+    window.addEventListener('load', () => {
+        let uploader = new MultiUploader(
+            '@staticAssetHost',
+            document.querySelector('#uploadedPhotosContainer'));
+    });
+</script>
+

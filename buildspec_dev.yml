@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 2.2
+      nodejs: 10
+
+  pre_build:
+    commands:
+      # suppress PATH warning from lambda tool
+      - export PATH="$PATH:/root/.dotnet/tools" 
+
+      # install aws dotnet lambda tool
+      - dotnet tool install --global Amazon.Lambda.Tools
+      
+      # install serverless framework
+      - npm install --global serverless
+
+      # install typescript and dependencies
+      - npm install --global typescript
+      - npm install --save @types/jquery
+
+  build:
+    commands:
+      - dotnet test src/demunity.lib.tests --configuration release
+      - dotnet test src/demunity.tests --configuration release
+      - dotnet test src/demunity.aws.tests --configuration release
+
+      - dotnet lambda package --configuration release --framework netcoreapp2.1 --project-location src/demunity
+      - dotnet lambda package --configuration release --framework netcoreapp2.1 --project-location src/demunity.imagesizer
+      - dotnet lambda package --configuration release --framework netcoreapp2.1 --project-location src/demunity.popscore
+      
+  post_build:
+    commands:
+      - serverless deploy --stage dev

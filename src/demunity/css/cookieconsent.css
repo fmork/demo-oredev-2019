@@ -1,0 +1,7 @@
+#cookieConsent {
+    border-bottom-color: var(--main-accent);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}

@@ -1,0 +1,22 @@
+@model demunity.Models.PublicUserWithPhotos
+@{
+    ViewData["Title"] = Model.User.Name;
+}
+<div class="row">
+    <div class="col-sm-12">
+        <h3>@Model.User.Name</h3>
+    </div>
+</div>
+<div class="row" id="onlineProfilesContainer">
+    <div class="col-md toned-down">(loading online profiles...)</div>
+</div>
+<div class="row">
+<partial name="GalleryThumbsPartial" model="Model.Photos" />
+</div>
+
+<script>
+    window.addEventListener('load', () => {
+        const likeManager = new LikeManager();
+        const userProfile = new UserProfileDisplay('@Model.User.UserId', null);
+    });
+</script>

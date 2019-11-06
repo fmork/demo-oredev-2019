@@ -1,0 +1,514 @@
+service: my-oredev-2019
+
+#------------------------------
+#
+# Custom variable declarations. These are mainly names of things, reducing clutter
+# elsewhere in this template file
+custom:
+  serviceNamePrefix: ${self:service}-${self:provider.stage}
+  photoUploadBucketName: ${self:custom.serviceNamePrefix}-photos-upload
+  photoWebBucketName: ${self:custom.serviceNamePrefix}-photos-web
+  dynamoDbTableName: ${self:custom.serviceNamePrefix}
+  dataProtectionDynamoDbTableName: ${self:custom.serviceNamePrefix}-dataprotection
+  aws-region: ${opt:region, self:provider.region}
+  lambdaRoleArn: "arn:aws:iam::238147952206:role/${self:custom.serviceNamePrefix}-${self:custom.aws-region}-lambdaRole"
+  
+  # certificate arn to cert for *.fmork-demo.com
+  cloudFrontCertArn:
+    dev: "arn:aws:acm:us-east-1:238147952206:certificate/4e24ea47-7639-4e2d-a3b6-bdadec914d2c"
+    prod: "arn:aws:acm:us-east-1:238147952206:certificate/1052c2aa-1244-42c4-81c1-768c9c5c5d77"
+  apiCertArn:
+    dev: "arn:aws:acm:eu-west-1:238147952206:certificate/ff59025c-0e20-4302-b68d-213f00f55135"
+    prod: "arn:aws:acm:eu-west-1:238147952206:certificate/8ce05d63-f299-4805-aa72-85d6ab0e3c3e"
+  cognitoClientIdSecretName: ${self:custom.serviceNamePrefix}-cognito-clientid
+  cognitoClientSecretSecretName: ${self:custom.serviceNamePrefix}-cognito-clientsecret
+  cognitoUserPoolIdSecretName: ${self:custom.serviceNamePrefix}-cognito-userpoolid
+  siteTitle: "My Øredev 2019"
+  siteHost:
+    dev: "oredev2019.fmork-demo.com"
+    prod: "www.myoredev2019.com"
+  staticAssetHost:
+    dev: "oredev2019-static.fmork-demo.com"
+    prod: "static.myoredev2019.com"
+  googleTagManagerId:
+    dev: ""
+    prod: "UA-182717-9"
+#------------------------------
+
+
+
+package:
+  individually: true
+
+
+provider:
+  name: aws
+  runtime: dotnetcore2.1
+  stage: ${opt:stage,'dev'}
+  region: eu-west-1
+  endpointType: REGIONAL
+  logRetentionInDays: 5
+  tracing:
+    apiGateway: true
+    lambda: true
+    
+  #-------------------------------------------------------------------
+  # This defines the role in which the lambdas will execute. Any 
+  # permission needed by the lambda needs to be defined here.
+  iamRoleStatements:
+    
+    # Allow the role to get, put and delete objects from the 
+    # relevant S3 buckets
+    - Effect: "Allow"
+      Action:
+        - "s3:GetObject"
+        - "s3:DeleteObject"
+        - "s3:PutObject"
+      Resource: 
+        - "arn:aws:s3:::${self:custom.photoUploadBucketName}"
+        - "arn:aws:s3:::${self:custom.photoWebBucketName}"
+    
+    # Allow the role to get, put, update and delete items, BatchGet 
+    # and BatchWrite, Query and Scan in the main DynamoDb table
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:GetItem"
+        - "dynamodb:PutItem"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+        - "dynamodb:BatchGetItem"
+        - "dynamodb:BatchWriteItem"
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+      Resource:
+        - 'Fn::Join':
+          - ':'
+          - - 'arn:aws:dynamodb'
+            - ${self:custom.aws-region}
+            - Ref: 'AWS::AccountId'
+            - 'table/${self:custom.dynamoDbTableName}'
+    
+    # Allow the role to Query and Scan any index in the main DynamoDb table
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+      Resource:
+        - 'Fn::Join':
+          - ':'
+          - - 'arn:aws:dynamodb'
+            - ${self:custom.aws-region}
+            - Ref: 'AWS::AccountId'
+            - 'table/${self:custom.dynamoDbTableName}/index/*'
+
+    # Allow the role to Scan and PutItem in the data protection
+    # DynamoDb table
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:Scan"
+        - "dynamodb:PutItem"
+      Resource:
+        - 'Fn::Join':
+          - ':'
+          - - 'arn:aws:dynamodb'
+            - ${self:custom.aws-region}
+            - Ref: 'AWS::AccountId'
+            - 'table/${self:custom.dataProtectionDynamoDbTableName}'
+    
+    # Allow the role to get the CognitoSettings value from 
+    # SecretsManager
+    - Effect: "Allow"
+      Action:
+        - "secretsmanager:GetSecretValue"
+      Resource:
+        - 'Fn::Join':
+          - ':'
+          - - 'arn:aws:secretsmanager'
+            - ${self:custom.aws-region}
+            - Ref: 'AWS::AccountId'
+            - 'secret:CognitoSettings*'
+
+
+#-------------------------------------------------------------------
+functions:
+
+  # Site root function. This is the main entry point for the web site
+  siteroot:
+    handler: demunity::demunity.LambdaEntryPoint::FunctionHandlerAsync
+    timeout: 10
+    memorySize: 768
+    
+    package:
+      artifact: src/demunity/bin/release/netcoreapp2.1/demunity.zip
+
+    # There are two http events wired to this lambda. One for the root, and
+    # one "proxy" event, tunneling all other requests into the lambda. The 
+    # root accepts the GET method, the proxy event accepts ANY method (to
+    # accommodate for PUT/POST/DELTE requests)
+    events:
+      - http:
+          path: /
+          method: GET
+      - http:
+          path: /{proxy+}
+          method: ANY
+
+    # Environment variables that will be available for the site
+    environment:
+      PHOTO_UPLOAD_BUCKET: ${self:custom.photoUploadBucketName}
+      DYNAMODB_TABLE_NAME: ${self:custom.dynamoDbTableName}
+      DATA_PROTECTION_DYNAMODB_TABLE_NAME: ${self:custom.dataProtectionDynamoDbTableName}
+      COGNITO_CLIENTID_SECRETNAME: ${self:custom.cognitoClientIdSecretName}
+      COGNITO_CLIENTSECRET_SECRETNAME: ${self:custom.cognitoClientSecretSecretName}
+      COGNITO_USERPOOLID_SECRETNAME: ${self:custom.cognitoUserPoolIdSecretName}
+      SITE_TITLE: ${self:custom.siteTitle}
+      STATIC_ASSET_HOST: https://${self:custom.staticAssetHost.${self:provider.stage}}
+      GOOGLE_TAG_MANAGER_ID: ${self:custom.googleTagManagerId.${self:provider.stage}}
+
+
+
+
+
+
+  # Web image making lambda. 
+  makewebimages:
+    handler: demunity.imagesizer::demunity.imagesizer.ImageResizeHandler::MakeWebImagesAsync
+    timeout: 30
+
+    # you can add packaging information here
+    package:
+      artifact: src/demunity.imagesizer/bin/release/netcoreapp2.1/demunity.imagesizer.zip
+
+    # This lambda is trigged by uploads to the photo upload S3 bucket. Note
+    # that referencing an S3 bucket as event trigger will automatically create
+    # the bucket as a side effect.
+    events:
+      - s3: ${self:custom.photoUploadBucketName}
+
+    # This lambda needs to know about both the upload and the web S3 buckets, and
+    # the name of the DynamoDB table
+    environment:
+      PHOTO_UPLOAD_BUCKET: ${self:custom.photoUploadBucketName}
+      PHOTO_WEB_BUCKET: ${self:custom.photoWebBucketName}
+      DYNAMODB_TABLE_NAME: ${self:custom.dynamoDbTableName}
+
+
+ # Image scoring worker lambda. 
+  scoringworker:
+    handler: demunity.popscore::demunity.popscore.ScoringWorker::CalculatePhotoScores
+    timeout: 30
+    memorySize: 512
+    
+    # you can add packaging information here
+    package:
+      artifact: src/demunity.popscore/bin/release/netcoreapp2.1/demunity.popscore.zip
+
+    # This lambda is trigged on a schedule (managed by a rule in CloudWatch that is 
+    # created automatically)
+    events:
+      - schedule: rate(5 minutes)
+
+    # This lambda needs to know the name of the DynamoDB table
+    environment:
+      DYNAMODB_TABLE_NAME: ${self:custom.dynamoDbTableName}
+
+
+
+
+
+
+
+#-------------------------------------------------------------------
+# Additional CloudFormation resources. These are extra resources
+# that the services will need, and that are not created as a side
+# effect of the service- and function declarations above.
+resources:
+  Conditions:
+    IsProd:
+      Fn::Equals:
+        - "${self:provider.stage}"
+        - "prod"
+    IsDev:
+      Fn::Equals:
+        - "${self:provider.stage}"
+        - "dev"
+  Resources:
+    # Table used by aspnet authentication
+    DataProtectionDynamoDBTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: "${self:custom.dataProtectionDynamoDbTableName}"
+        BillingMode: "PAY_PER_REQUEST"
+        AttributeDefinitions:
+          -
+            AttributeName: "Id"
+            AttributeType: "S"
+          -
+            AttributeName: "FriendlyName"
+            AttributeType: "S"
+        KeySchema:
+          -
+            AttributeName: "Id"
+            KeyType: "HASH"
+          -
+            AttributeName: "FriendlyName"
+            KeyType: "RANGE"
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+
+    # Main table for the web site
+    DynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoDbTableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          -
+            AttributeName: "PartitionKey"
+            AttributeType: "S"
+          -
+            AttributeName: "SortKey"
+            AttributeType: "S"
+          -
+            AttributeName: "GSI1PartitionKey"
+            AttributeType: "S"
+          -
+            AttributeName: "RecordType"
+            AttributeType: "S"
+          -
+            AttributeName: "CreatedTime"
+            AttributeType: "S"
+          -
+            AttributeName: "Score"
+            AttributeType: "N"
+        KeySchema:
+          -
+            AttributeName: "PartitionKey"
+            KeyType: "HASH"
+          -
+            AttributeName: "SortKey"
+            KeyType: "RANGE"
+        GlobalSecondaryIndexes:
+          -
+            IndexName: "GSI1"
+            KeySchema:
+              -
+                AttributeName: "GSI1PartitionKey"
+                KeyType: "HASH"
+              -
+                AttributeName: "SortKey"
+                KeyType: "RANGE"
+            Projection:
+              ProjectionType: "ALL"
+          -
+            IndexName: "GSI2"
+            KeySchema:
+              -
+                AttributeName: "RecordType"
+                KeyType: "HASH"
+              -
+                AttributeName: "CreatedTime"
+                KeyType: "RANGE"
+            Projection:
+              ProjectionType: "ALL"
+          - 
+            IndexName: "GSI3"
+            KeySchema:
+              -
+                AttributeName: "RecordType"
+                KeyType: "HASH"
+              -
+                AttributeName: "Score"
+                KeyType: "RANGE"
+            Projection:
+              ProjectionType: "ALL"
+        TimeToLiveSpecification:
+          AttributeName: "TTL"
+          Enabled: true
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+
+    # S3 bucket for storing and serving the photos (and some other
+    # static assets)
+    PhotosWebBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.photoWebBucketName}
+        CorsConfiguration:
+          CorsRules:
+          - AllowedHeaders:
+            - Authorization
+            MaxAge: '300'
+            AllowedMethods:
+            - GET
+            Id: AllowHTTP
+            AllowedOrigins:
+            - 'https://${self:custom.siteHost.${self:provider.stage}}'
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+
+    # S3 bucket for uploaded photos (only for the dev stage)
+    S3BucketMyoredev2019devphotosupload:
+      Type: AWS::S3::Bucket
+      Condition: IsDev
+      Properties:
+        BucketName: ${self:custom.photoUploadBucketName}
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - 'PUT'
+              AllowedOrigins:
+                - 'https://${self:custom.siteHost.${self:provider.stage}}'
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+    
+    # S3 bucket for uploaded photos (only for the prod stage)
+    S3BucketMyoredev2019prodphotosupload:
+      Type: AWS::S3::Bucket
+      Condition: IsProd
+      Properties:
+        BucketName: ${self:custom.photoUploadBucketName}
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - 'PUT'
+              AllowedOrigins:
+                - 'https://${self:custom.siteHost.${self:provider.stage}}'
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+
+    # S3 bucket policy for the upload photos bucket, granting access for
+    # the lambda role to access the objects in it
+    PhotosUploadBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: ${self:custom.photoUploadBucketName}
+        PolicyDocument:
+          Statement:
+            - Effect: "Allow"
+              Action:
+                - "s3:GetObject"
+                - "s3:DeleteObject"
+                - "s3:PutObject"
+              Resource: arn:aws:s3:::${self:custom.photoUploadBucketName}/*
+              Principal:
+                AWS:
+                  - ${self:custom.lambdaRoleArn}
+
+    # S3 bucket policy for the web photos bucket, granting access for
+    # the lambda role to access the objects in it
+    PhotosWebBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: ${self:custom.photoWebBucketName}
+        PolicyDocument:
+          Statement:
+            - Effect: "Allow"
+              Action:
+                - "s3:GetObject"
+                - "s3:DeleteObject"
+                - "s3:PutObject"
+              Resource: arn:aws:s3:::${self:custom.photoWebBucketName}/*
+              Principal:
+                AWS:
+                  - ${self:custom.lambdaRoleArn}
+            - Effect: "Allow"
+              Action:
+                - "s3:GetObject"
+              Resource: arn:aws:s3:::${self:custom.photoWebBucketName}/*
+              Principal:
+                AWS:
+                  - 'Fn::Join':
+                      - ' '
+                      - - 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity'
+                        - Ref: 'WebDistributionAccessIdentity'
+
+    # CloudFront Access Identity, used when CloudFront accesses objects
+    # in the S3 bucket for serving them to the internet
+    WebDistributionAccessIdentity:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: "Origin Access Identity for ${self:custom.serviceNamePrefix}"
+
+    # CloudFront distribution for exposing the contents of the S3 web photos bucket
+    # to the internet (and providing edge caching of the data)
+    WebDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Comment: "CDN for ${self:custom.staticAssetHost.${self:provider.stage}}"
+          Enabled: true
+          DefaultCacheBehavior:
+            AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            ForwardedValues:
+              QueryString: true
+              Headers:
+              - Access-Control-Request-Headers
+              - Access-Control-Request-Method
+              - Origin
+            TargetOriginId: "only-origin"
+            ViewerProtocolPolicy: "allow-all"
+          DefaultRootObject: "index.html"
+          Origins:
+            -
+              S3OriginConfig:
+                OriginAccessIdentity:
+                  'Fn::Join':
+                    - ''
+                    - - 'origin-access-identity/cloudfront/'
+                      - Ref: 'WebDistributionAccessIdentity'
+              DomainName:
+                'Fn::GetAtt':
+                  - 'PhotosWebBucket'
+                  - 'DomainName'
+              Id: "only-origin"
+          Aliases:
+            - ${self:custom.staticAssetHost.${self:provider.stage}}
+          ViewerCertificate:
+            AcmCertificateArn: ${self:custom.cloudFrontCertArn.${self:provider.stage}}
+            MinimumProtocolVersion: TLSv1.1_2016
+            SslSupportMethod: sni-only
+        Tags:
+          - Key: SERVERLESS-SERVICE
+            Value: ${self:custom.serviceNamePrefix}
+
+
+    # NOTE: the DomainName and BasePathMapping resources need to be commented
+    # out on the first deployment, due to internal behavior in CloudFormation.
+    # Once the stack is created, these can be added back into the template.
+
+    # Custom domain name configuration for the API gateway
+    DomainName:
+      Type: AWS::ApiGateway::DomainName
+      Properties:
+        RegionalCertificateArn: ${self:custom.apiCertArn.${self:provider.stage}}
+        DomainName: ${self:custom.siteHost.${self:provider.stage}}
+        EndpointConfiguration:
+          Types:
+            - REGIONAL
+
+    # Base path mapping, connecting the custom domain name to our API stage
+    BasePathMapping:
+      Type: AWS::ApiGateway::BasePathMapping
+      DependsOn: DomainName
+      Properties:
+        BasePath: ""
+        DomainName: ${self:custom.siteHost.${self:provider.stage}}
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Stage: ${self:provider.stage}

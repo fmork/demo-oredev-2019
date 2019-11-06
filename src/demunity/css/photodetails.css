@@ -1,0 +1,125 @@
+#feedbackContainer {
+    float: right
+}
+
+.photo-edit-btn {
+    float: right;
+    margin-left: 1em;
+    margin-bottom: .5em;
+}
+
+.photo-comment {
+    margin-bottom: 1em;
+}
+
+.comment-text {
+    margin-left: 1rem;
+}
+
+.comment-footer {
+    margin-left: 1rem;
+}
+
+.comment-time {
+    display: inline-block;
+}
+
+.comment-controls {
+    margin-left: 0.5rem;
+    display: inline-block;
+}
+
+.comment-controls a {
+    margin-right: 0.5rem;
+}
+
+#addCommentContainer {
+    border: 1px solid var(--mid-gray);
+    border-radius: 0.3rem;
+    padding: 0.5rem;
+    width: auto;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+#addCommentContainer textarea {
+    width: calc(100% - 2.5rem);
+    height: 1.8rem;
+    border: none;
+    overflow: hidden;
+}
+
+#addCommentContainer textarea:focus {
+    width: calc(100% - 2.5rem);
+    height: 6rem;
+    border: none;
+    overflow: scroll;
+}
+
+#addCommentControls {
+    float: right;
+}
+
+.manage-photo-container {
+    background-color: var(--mid-gray);
+    border-radius: 0.3rem;
+    margin-bottom: 1rem;
+}
+
+#textDisplayContainer {
+    margin-bottom: 1rem;
+}
+
+#textEditContainer {
+    padding-top: 0.5rem;
+}
+
+#photoEditCollapseHeader {
+    padding: 0rem;
+}
+
+textarea#photoText {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: none;
+}
+
+#showTextEditorLink {
+    float: right;
+    margin-left: 0.5rem;
+}
+
+#photoTextEditContainer {
+    width: calc(100% - 2.5rem);
+}
+
+#photoTextEditor {
+    width: 100%;
+    height: 6rem;
+}
+
+#saveCommand {
+    text-align: right;
+}
+
+#photoEditControls {
+    text-align: center;
+}
+
+#textEditControls a {
+    margin-left: 1rem;
+}
+
+#saveCommand {
+    text-align: right;
+}
+
+#photoDeleteLink {
+    color: red;
+}
+
+#commentsDisplayContainer {
+    margin-top: 1rem;
+    border-top: 1px solid var(--mid-gray);
+    padding-top: 1rem;
+}
